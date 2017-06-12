@@ -5,6 +5,15 @@
     "author": "@vlaand",
     "version": "0.1",
     "async": False,
+
+    "extra_params": {
+        "estimator": {
+            "aliases": ["estimator", "e"],
+            "required": true,
+            "options": ["LSTM", "LinearSVR", "SVR", "averaged"],
+            "default": "LSTM"
+        }
+     },
     "requirements": [
         "nltk>=3.0.5",
         "numpy>=1.10.4",
@@ -51,5 +60,18 @@
         "joy": "http://gsi.dit.upm.es/ontologies/wnaffect/ns#joy", 
         "neutral": "http://gsi.dit.upm.es/ontologies/wnaffect/ns#neutral-emotion", 
         "sadness": "http://gsi.dit.upm.es/ontologies/wnaffect/ns#sadness"
+    },
+    "centroid_mappings": {
+        "V": "http://www.gsi.dit.upm.es/ontologies/onyx/vocabularies/anew/ns#valence",
+        "A": "http://www.gsi.dit.upm.es/ontologies/onyx/vocabularies/anew/ns#arousal",
+        "D": "http://www.gsi.dit.upm.es/ontologies/onyx/vocabularies/anew/ns#dominance"
+    },
+    "wnaffect_mappings": {
+        "sadness":"sadness",
+        "disgust":"disgust",
+        "surprise":"surprise",
+        "anger":"anger",
+        "fear":"fear",
+        "joy":"joy"
     }
 }

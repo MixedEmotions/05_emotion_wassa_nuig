@@ -386,7 +386,7 @@ def _get_maxlen(tweets):
 
 # ### JUNCTION
 
-# In[118]:
+# In[217]:
 
 EMOTION = 3
 print(emoNames[EMOTION])
@@ -417,7 +417,7 @@ _plot_word_frequencies(wordFrequencies, WORD_FREQUENCY_TRESHOLD = WORD_FREQUENCY
 
 # ### Preparing for SVR
 
-# In[119]:
+# In[218]:
 
 from sklearn.feature_extraction.text import CountVectorizer
 
@@ -433,21 +433,21 @@ def _load_ngramizer(filename = 'ngramizer.dump'):
     return ngramizer
 
 NGRAM_VALUE = 4
-WORD_FREQUENCY_TRESHOLD = 2
+WORD_FREQUENCY_TRESHOLD = 3
 print('NGRAM_VALUE =',NGRAM_VALUE)
     
 vectorizer = CountVectorizer(ngram_range = (1,NGRAM_VALUE),token_pattern=r'\b\w+\b', min_df=WORD_FREQUENCY_TRESHOLD,max_df=1000)
-# ngramizer = vectorizer.fit(meltTweets)
-ngramizer = vectorizer.fit(train_tweets+dev_tweets)
+ngramizer = vectorizer.fit(meltTweets)
+# ngramizer = vectorizer.fit(train_tweets+dev_tweets+test_tweets)
 
-vec = ngramizer.transform(train_tweets+dev_tweets).toarray()
+vec = ngramizer.transform(train_tweets+dev_tweets+test_tweets).toarray()
 print(len(vec), len(vec[0]))
     
-_save_ngramizer(ngramizer, filename = '/home/vlaand/IpythonNotebooks/wassa2017/ngramizers/wassa_ngramizer_'+emoNames[EMOTION]+'.dump')
-_save_ngramizer(ngramizer, filename = '/home/vlaand/IpythonNotebooks/05_emotion_wassa_nuig/wassaRegression/ngramizers/ngramizer.'+emoNames[EMOTION]+'.dump')
+# _save_ngramizer(ngramizer, filename = '/home/vlaand/IpythonNotebooks/wassa2017/wassa_ngramizer.dump')
+# _save_ngramizer(ngramizer, filename = '/home/vlaand/IpythonNotebooks/05_emotion_wassa_nuig/wassaRegression/wassa_ngramizer.dump')
 
 
-# In[112]:
+# In[219]:
 
 ### NGRAM FREQUENCY
 
@@ -467,7 +467,7 @@ semilogy(natsorted(list(ngram_freq.values()),reverse=True))
 show()
 
 
-# In[49]:
+# In[204]:
 
 import numpy as np
 import math, itertools
@@ -544,15 +544,15 @@ def _convert_text_to_vector(tweets,  Dictionary, labels, ngramizer):
     for i, t in enumerate(tweets):
         embeddingsVector = ModWordVectors(tweetToWordVectors(Dictionary,tweets[i]))
 #         capitalRatioVector = capitalRatio(dfs[st][emoNames[EMOTION]][i])
-        simVector = compareTokenToSentence(leftToken = emoNames[EMOTION], sentence = t)
+#         simVector = compareTokenToSentence(leftToken = emoNames[EMOTION], sentence = t)
         ngramVector = vec[i]
-        _X.append( _bind_vectors((ngramVector, embeddingsVector, simVector))  )
-#         _X.append( _bind_vectors((ngramVector, embeddingsVector))  )
+#         _X.append( _bind_vectors((ngramVector, embeddingsVector, simVector))  )
+        _X.append( _bind_vectors((ngramVector, embeddingsVector))  )
         _y.append(labels[i])
     return(np.asarray(_X), np.asarray(_y))
 
 
-# In[120]:
+# In[220]:
 
 print('chosen emotion:', emoNames[EMOTION])
 
@@ -564,23 +564,6 @@ svr_X, svr_y = _convert_text_to_vector(
 
 print('\tdata shape:\t', svr_X.shape, svr_y.shape)  
 
-# svr_X_train, svr_y_train = _convert_text_to_vector(
-#     tweets = train_tweets,
-#     labels = train_labels, 
-#     Dictionary = Dictionary, 
-#     ngramizer = ngramizer)
-
-# svr_X_dev, svr_y_dev = _convert_text_to_vector(
-#     tweets = dev_tweets,
-#     labels = dev_labels, 
-#     Dictionary = Dictionary, 
-#     ngramizer = ngramizer)
-
-
-
-# print('\tdata shape:\t', svr_X_train.shape, svr_y_train.shape)   
-# print('\tdata shape:\t', svr_X_dev.shape, svr_y_dev.shape)  
-
 svr_X_test, svr_y_test = _convert_text_to_vector(
     tweets = test_tweets,
     labels = test_labels, 
@@ -590,7 +573,7 @@ svr_X_test, svr_y_test = _convert_text_to_vector(
 print('\tdata shape:\t', svr_X_test.shape, svr_y_test.shape)  
 
 
-# In[81]:
+# In[152]:
 
 from sklearn.svm import SVR, LinearSVR
 from sklearn.externals import joblib
@@ -603,7 +586,7 @@ from multiprocessing import Pool
 import warnings
 
 
-# In[121]:
+# In[134]:
 
 warnings.simplefilter('ignore')
 
@@ -692,7 +675,7 @@ except:
     train_params.update(temp_params)
 
 
-# In[53]:
+# In[135]:
 
 train_params = {'LSTM': {'anger': {'nb_epoch': 12},
   'fear': {'nb_epoch': 36},
@@ -756,22 +739,23 @@ train_params = {'LSTM': {'anger': {'nb_epoch': 12},
    'tol': 1e-05}}}
 
 
-# In[124]:
+# In[225]:
 
-# ESTIMATOR = 'LinearSVR'
-ESTIMATOR = 'SVR'
-
+ESTIMATOR = 'LinearSVR'
+# ESTIMATOR = 'SVR'
 
 if ESTIMATOR == 'SVR':
     svrTrained = SVR(C=train_params[ESTIMATOR][emoNames[EMOTION]]['C'], 
                  tol=train_params[ESTIMATOR][emoNames[EMOTION]]['tol'], 
                  gamma=train_params[ESTIMATOR][emoNames[EMOTION]]['gamma'], 
-                 epsilon=train_params[ESTIMATOR][emoNames[EMOTION]]['epsilon'])
+                 epsilon=train_params[ESTIMATOR][emoNames[EMOTION]]['epsilon'],
+                 verbose=True)
     
 else:
     svrTrained = LinearSVR(C=train_params[ESTIMATOR][emoNames[EMOTION]]['C'], 
                  tol=train_params[ESTIMATOR][emoNames[EMOTION]]['tol'], 
-                 epsilon=train_params[ESTIMATOR][emoNames[EMOTION]]['epsilon'])
+                 epsilon=train_params[ESTIMATOR][emoNames[EMOTION]]['epsilon'],
+                 verbose=True)
     
 svrTrained.fit(svr_X, svr_y)
 print(svrTrained)
@@ -787,6 +771,11 @@ def saveModelFor(model, ESTIMATOR, EMOTION=0, path='/home/vlaand/IpythonNotebook
     
 saveModelFor(svrTrained, ESTIMATOR=ESTIMATOR, EMOTION=EMOTION, path = '/home/vlaand/IpythonNotebooks/wassa2017/classifiers/')
 saveModelFor(svrTrained, ESTIMATOR=ESTIMATOR, EMOTION=EMOTION, path = '/home/vlaand/IpythonNotebooks/05_emotion_wassa_nuig/wassaRegression/classifiers/')
+
+
+# In[226]:
+
+svrTrained.predict([ svr_X[0] ])[0]
 
 
 # ### Preparing for LSTM
