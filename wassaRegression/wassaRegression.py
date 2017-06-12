@@ -282,9 +282,6 @@ class wassaRegression(EmotionPlugin):
         text_input = params.get("input", None)        
         text = self._text_preprocessor(text_input) 
         
-        logger.info(text_input)
-        logger.info(text)
-        
         self.ESTIMATOR = params.get("estimator", 'LSTM')
         
         if self.ESTIMATOR == 'LSTM':        
@@ -303,8 +300,6 @@ class wassaRegression(EmotionPlugin):
         else:     
             X_svr = self._convert_text_to_vector(text=text, text_input=text_input)            
             feature_text = self._extract_features_svr(X_svr)  
-            
-        logger.info(feature_text)
         
         logger.info("{} {}".format(datetime.now() - st, "string analysed"))
             
