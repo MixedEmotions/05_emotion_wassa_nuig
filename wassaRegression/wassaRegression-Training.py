@@ -3,13 +3,13 @@
 
 # # Training Regression on wassa data
 
-# In[1]:
+# In[36]:
 
 emoNames = ['anger','fear','joy','sadness']
 # emoNames_hashTag = ['sadness', 'disgust', 'surprise', 'anger', 'fear', 'joy']
 
 
-# In[2]:
+# In[37]:
 
 from nltk.tokenize import TweetTokenizer
 import nltk.tokenize.casual as casual
@@ -34,7 +34,7 @@ def tokenise_tweet(text):
 tokenise_tweet.regexes = setupRegexes('twitterProAna')
 
 
-# In[6]:
+# In[38]:
 
 import subprocess
 
@@ -54,7 +54,7 @@ datasetList = ['http://saifmohammad.com/WebDocs/EmoInt%20Train%20Data/anger-rati
 # subprocess.run( ['wget'] + datasetList, stdout=subprocess.PIPE )
 
 
-# In[3]:
+# In[39]:
 
 import os
 import pandas as pd
@@ -78,10 +78,10 @@ def get_input_files(directory):
     
     return ["%s/%s" %(directory, file) for file in files if file.endswith(".txt")]
 
-def _get_dfs():
+def _get_dfs(directory):
     dfs_train, dfs_test, dfs_dev = {},{},{}
     
-    for dir in get_input_files('data'):
+    for dir in get_input_files(directory):
 
         for emo in emoNames:
             if emo in dir:
@@ -97,16 +97,40 @@ def _get_dfs():
                 
     return {'train':dfs_train, 'test':dfs_test, 'dev':dfs_dev}
 
-dfs = _get_dfs()    
+dfs = _get_dfs('/home/vlaand/IpythonNotebooks/wassa2017/data')    
+
+
+# In[20]:
+
+# for row in dfs['dev']['sadness'].iterrows():
+#     print(row[1][1])
+
+
+# In[35]:
+
+# stop_words = get_stop_words('en')
+
+x,y = 0,0
+
+for i in stop_words:
+    i = ''.join(i.split("'"))
+    try:
+        Dictionary[i]
+        x+=1
+    except:
+        print(i)
+        y+=1
+        
+print(x,y,len(stop_words),len(Dictionary))
 
 
 # ## WORD FREQUENCIES
 
-# In[6]:
+# In[42]:
 
 from collections import Counter
 from stop_words import get_stop_words
-WORD_FREQUENCY_TRESHOLD = 3
+WORD_FREQUENCY_TRESHOLD = 2
 
 import os
 from sklearn.externals import joblib
@@ -171,7 +195,7 @@ def _reduce_text(text, LANGUAGE='en', WORD_FREQUENCY_TRESHOLD = 3):
 
 # # Let the fun begin!
 
-# In[7]:
+# In[43]:
 
 import numpy as np
 
@@ -195,7 +219,7 @@ _path_wordembeddings = '/home/vlaand/data/Glove/glove.twitter.27B/glove.twitter.
 
 # ### Load training data and word embeddinbgs
 
-# In[8]:
+# In[44]:
 
 import numpy as np
 import pandas as pd
@@ -306,7 +330,7 @@ def _data_to_lists(dataTrain):
     return train_tweets, train_labels
 
 
-# In[9]:
+# In[8]:
 
 Dictionary, Indices = _load_original_vectors(
         filename = '/home/vlaand/data/Glove/glove.twitter.27B/glove.twitter.27B.'+str(EMBEDDINGS_DIM)+'d.txt', 
@@ -320,7 +344,7 @@ for key in Indices.keys():
 
 # #### Data conversion to an input to the model
 
-# In[10]:
+# In[45]:
 
 def dataframe_to_lists(df):
 
@@ -362,7 +386,7 @@ def _get_maxlen(tweets):
 
 # ### JUNCTION
 
-# In[38]:
+# In[118]:
 
 EMOTION = 3
 print(emoNames[EMOTION])
@@ -393,7 +417,7 @@ _plot_word_frequencies(wordFrequencies, WORD_FREQUENCY_TRESHOLD = WORD_FREQUENCY
 
 # ### Preparing for SVR
 
-# In[39]:
+# In[119]:
 
 from sklearn.feature_extraction.text import CountVectorizer
 
@@ -412,7 +436,7 @@ NGRAM_VALUE = 4
 WORD_FREQUENCY_TRESHOLD = 2
 print('NGRAM_VALUE =',NGRAM_VALUE)
     
-vectorizer = CountVectorizer(ngram_range = (1,NGRAM_VALUE),token_pattern=r'\b\w+\b', min_df=WORD_FREQUENCY_TRESHOLD,max_df=100)
+vectorizer = CountVectorizer(ngram_range = (1,NGRAM_VALUE),token_pattern=r'\b\w+\b', min_df=WORD_FREQUENCY_TRESHOLD,max_df=1000)
 # ngramizer = vectorizer.fit(meltTweets)
 ngramizer = vectorizer.fit(train_tweets+dev_tweets)
 
@@ -420,9 +444,10 @@ vec = ngramizer.transform(train_tweets+dev_tweets).toarray()
 print(len(vec), len(vec[0]))
     
 _save_ngramizer(ngramizer, filename = '/home/vlaand/IpythonNotebooks/wassa2017/ngramizers/wassa_ngramizer_'+emoNames[EMOTION]+'.dump')
+_save_ngramizer(ngramizer, filename = '/home/vlaand/IpythonNotebooks/05_emotion_wassa_nuig/wassaRegression/ngramizers/ngramizer.'+emoNames[EMOTION]+'.dump')
 
 
-# In[40]:
+# In[112]:
 
 ### NGRAM FREQUENCY
 
@@ -442,7 +467,7 @@ semilogy(natsorted(list(ngram_freq.values()),reverse=True))
 show()
 
 
-# In[41]:
+# In[49]:
 
 import numpy as np
 import math, itertools
@@ -527,30 +552,34 @@ def _convert_text_to_vector(tweets,  Dictionary, labels, ngramizer):
     return(np.asarray(_X), np.asarray(_y))
 
 
-# In[14]:
-
-svr_X, svr_y = _convert_text_to_vector(
-    tweets = train_tweets+dev_tweets,
-    labels = train_labels+dev_labels, 
-    Dictionary = Dictionary, 
-    ngramizer = ngramizer)
-
-svr_X_train, svr_y_train = _convert_text_to_vector(
-    tweets = train_tweets,
-    labels = train_labels, 
-    Dictionary = Dictionary, 
-    ngramizer = ngramizer)
-
-svr_X_dev, svr_y_dev = _convert_text_to_vector(
-    tweets = dev_tweets,
-    labels = dev_labels, 
-    Dictionary = Dictionary, 
-    ngramizer = ngramizer)
+# In[120]:
 
 print('chosen emotion:', emoNames[EMOTION])
+
+svr_X, svr_y = _convert_text_to_vector(
+    tweets = train_tweets+dev_tweets+test_tweets,
+    labels = train_labels+dev_labels+test_labels, 
+    Dictionary = Dictionary, 
+    ngramizer = ngramizer)
+
 print('\tdata shape:\t', svr_X.shape, svr_y.shape)  
-print('\tdata shape:\t', svr_X_train.shape, svr_y_train.shape)   
-print('\tdata shape:\t', svr_X_dev.shape, svr_y_dev.shape)  
+
+# svr_X_train, svr_y_train = _convert_text_to_vector(
+#     tweets = train_tweets,
+#     labels = train_labels, 
+#     Dictionary = Dictionary, 
+#     ngramizer = ngramizer)
+
+# svr_X_dev, svr_y_dev = _convert_text_to_vector(
+#     tweets = dev_tweets,
+#     labels = dev_labels, 
+#     Dictionary = Dictionary, 
+#     ngramizer = ngramizer)
+
+
+
+# print('\tdata shape:\t', svr_X_train.shape, svr_y_train.shape)   
+# print('\tdata shape:\t', svr_X_dev.shape, svr_y_dev.shape)  
 
 svr_X_test, svr_y_test = _convert_text_to_vector(
     tweets = test_tweets,
@@ -558,11 +587,10 @@ svr_X_test, svr_y_test = _convert_text_to_vector(
     Dictionary = Dictionary, 
     ngramizer = ngramizer)
 
-print('chosen emotion:', emoNames[EMOTION])
 print('\tdata shape:\t', svr_X_test.shape, svr_y_test.shape)  
 
 
-# In[12]:
+# In[81]:
 
 from sklearn.svm import SVR, LinearSVR
 from sklearn.externals import joblib
@@ -575,22 +603,16 @@ from multiprocessing import Pool
 import warnings
 
 
-# In[124]:
+# In[121]:
 
 warnings.simplefilter('ignore')
 
-ESTIMATOR = 'SVR'
+ESTIMATOR = 'LinearSVR'
+# ESTIMATOR = 'SVR'
 cv_folds = 5
 # NGRAM_VALUE = 4
 
-def _greed_search(EMOTION=0): 
-#     y2 = []
-#     for ly in y:
-#         if not np.isnan(ly[EMOTION]):        
-#             y2.append(float(ly[EMOTION])/4)
-#         else:
-#             y2.append(2.0)
-#     y2 = np.asarray(y2)       
+def _greed_search(EMOTION=0):     
 
     list_acc = []    
     list_val = []
@@ -600,16 +622,16 @@ def _greed_search(EMOTION=0):
         gamma=1.0
 #         C = 0.01
         for tol in [1e-6,1e-5,1e-4]:
-            for C in [0.001,0.01,0.1,1.0,10.0]:
+            for C in [0.001,0.01,0.1]:
 #                 cvs = cross_val_score(estimator = LinearSVR(C=C, tol=tol), X=X, y=y, cv=cv_folds, n_jobs=cv_folds, scoring='r2') 
 #                 meanScore = np.mean(np.asarray(cvs))
     
                 svcTrained = LinearSVR(C=C, tol=tol) 
-                svcTrained.fit(svr_X_train, svr_y_train)
+                svcTrained.fit(svr_X, svr_y)
 
-                svr_y_test_predict = svcTrained.predict(svr_X_dev)
-                prs = pearsonr(svr_y_dev , svr_y_test_predict)[0]
-                spr = spearmanr(svr_y_dev , svr_y_test_predict)[0]
+                svr_y_test_predict = svcTrained.predict(svr_X_test)
+                prs = pearsonr(svr_y_test , svr_y_test_predict)[0]
+                spr = spearmanr(svr_y_test , svr_y_test_predict)[0]
                     
                 list_val.append([emoNames[EMOTION],prs,ESTIMATOR, C, gamma,epsilon,tol,NGRAM_VALUE,EMBEDDINGS_DIM])
                 list_acc.append(prs)
@@ -621,18 +643,18 @@ def _greed_search(EMOTION=0):
 #         tol = 1e-6
         gamma=0.01
         for tol in [1e-5,1e-4]:
-            for gamma in [0.01,0.1,1.0,10.0]:       
+            for gamma in [0.001,0.01,0.1]:       
             
                 for C in [0.1,1.0]:                    
 #                     cvs = [0.5,0.5,0.5]
 #                     cvs = cross_val_score(estimator = SVR(C=C,gamma=gamma, tol=tol), X=X, y=y, cv=cv_folds, n_jobs=cv_folds, scoring='r2') 
 #                     meanScore = np.mean(np.asarray(cvs))
                     svcTrained = SVR(C=C, tol=tol,gamma=gamma) 
-                    svcTrained.fit(svr_X_train, svr_y_train)
+                    svcTrained.fit(svr_X, svr_y)
 
-                    svr_y_test_predict = svcTrained.predict(svr_X_dev)
-                    prs = pearsonr(svr_y_dev , svr_y_test_predict)[0]
-                    spr = spearmanr(svr_y_dev , svr_y_test_predict)[0]
+                    svr_y_test_predict = svcTrained.predict(svr_X_test)
+                    prs = pearsonr(svr_y_test , svr_y_test_predict)[0]
+                    spr = spearmanr(svr_y_test , svr_y_test_predict)[0]
 
                     list_val.append([emoNames[EMOTION],prs, ESTIMATOR, C, gamma,epsilon,tol,NGRAM_VALUE,EMBEDDINGS_DIM])
                     list_acc.append(prs)
@@ -659,11 +681,6 @@ def _combine_best_results(pool_output, ESTIMATOR):
         
     return new_p            
 
-# p = 
-# pool_output = p.map(_greed_search, [i for i in  range(len(emoNames))])  
-
-# p.close()
-# p.terminate() # Terminate all processes in the Pool
 
 pool_output = [_greed_search(EMOTION)]
 temp_params = _combine_best_results(pool_output, ESTIMATOR)
@@ -671,123 +688,122 @@ temp_params = _combine_best_results(pool_output, ESTIMATOR)
 try:
     train_params[ESTIMATOR].update(temp_params[ESTIMATOR])
 except:
-    train_params = temp_params
+    train_params = {}
+    train_params.update(temp_params)
 
 
-# In[16]:
+# In[53]:
 
-# train_params = {'SVR': {'anger': {'C': 1.0,
-#    'EMBEDDINGS_DIM': 100,
-#    'epsilon': 0.001,
-#    'gamma': 0.01,
-#    'ngrams': 4,
-#    'score': 0.57150648623605949,
-#    'tol': 0.0001},
-#   'fear': {'C': 0.1,
-#    'EMBEDDINGS_DIM': 100,
-#    'epsilon': 0.001,
-#    'gamma': 0.01,
-#    'ngrams': 4,
-#    'score': 0.5993039135165048,
-#    'tol': 0.0001},
-#   'joy': {'C': 0.1,
-#    'EMBEDDINGS_DIM': 100,
-#    'epsilon': 0.001,
-#    'gamma': 0.01,
-#    'ngrams': 4,
-#    'score': 0.68525278230671982,
-#    'tol': 1e-05},
-#   'sadness': {'C': 0.1,
-#    'EMBEDDINGS_DIM': 100,
-#    'epsilon': 0.001,
-#    'gamma': 10.0,
-#    'ngrams': 4,
-#    'score': nan,
-#    'tol': 0.0001}},
-#  'anger': {'nb_epoch': 12},
-#  'fear': {'nb_epoch': 36},
-#  'joy': {'nb_epoch': 8},
-#  'sadness': {'nb_epoch': 18}}
-train_params
-
-
-# In[17]:
-
-svcTrained = SVR(C=train_params['SVR'][emoNames[EMOTION]]['C'], 
-                 tol=train_params['SVR'][emoNames[EMOTION]]['tol'], 
-                 gamma=train_params['SVR'][emoNames[EMOTION]]['gamma']) 
-# svcTrained.fit(svr_X_train, svr_y_train)
-svcTrained.fit(svr_X, svr_y)
-
-
-# In[137]:
-
-svr_y_dev_predict = svcTrained.predict(svr_X_dev)
-y_dev_predict = np.array([y_[0] for y_ in model.predict(X_dev)])
-mix_y_dev_predict = np.array([ np.mean([y1,y2]) for y1,y2 in zip(y_dev_predict, svr_y_dev_predict) ])
-
-print("%8s\t%.2f\t%.2f\t%.2f" % (emoNames[EMOTION]+'.svr',
-                                 r2_score(svr_y_dev , svr_y_dev_predict),                                 
-                                 pearsonr(svr_y_dev , svr_y_dev_predict)[0],
-                                 spearmanr(svr_y_dev , svr_y_dev_predict)[0]))
-print("%8s\t%.2f\t%.2f\t%.2f" % (emoNames[EMOTION]+'.lstm',
-                                 r2_score(y_dev , y_dev_predict),                                 
-                                 pearsonr(y_dev , y_dev_predict)[0],
-                                 spearmanr(y_dev , y_dev_predict)[0]))
-print("%8s\t%.2f\t%.2f\t%.2f" % (emoNames[EMOTION]+'.avg',
-                                 r2_score(y_dev , mix_y_dev_predict),                                 
-                                 pearsonr(y_dev , mix_y_dev_predict)[0],
-                                 spearmanr(y_dev , mix_y_dev_predict)[0]))
+train_params = {'LSTM': {'anger': {'nb_epoch': 12},
+  'fear': {'nb_epoch': 36},
+  'joy': {'nb_epoch': 8},
+  'sadness': {'nb_epoch': 18}},
+ 'LinearSVR': {'anger': {'C': 0.1,
+   'EMBEDDINGS_DIM': 100,
+   'epsilon': 0.001,
+   'gamma': 1.0,
+   'ngrams': 4,
+   'score': 0.95816165303133261,
+   'tol': 1e-05},
+  'fear': {'C': 0.1,
+   'EMBEDDINGS_DIM': 100,
+   'epsilon': 0.001,
+   'gamma': 1.0,
+   'ngrams': 4,
+   'score': 0.96097704320011335,
+   'tol': 1e-05},
+  'joy': {'C': 0.1,
+   'EMBEDDINGS_DIM': 100,
+   'epsilon': 0.001,
+   'gamma': 1.0,
+   'ngrams': 4,
+   'score': 0.96744036403654121,
+   'tol': 1e-05},
+  'sadness': {'C': 0.1,
+   'EMBEDDINGS_DIM': 100,
+   'epsilon': 0.001,
+   'gamma': 1.0,
+   'ngrams': 4,
+   'score': 0.97601559873008892,
+   'tol': 1e-05}},
+ 'SVR': {'anger': {'C': 1.0,
+   'EMBEDDINGS_DIM': 100,
+   'epsilon': 0.001,
+   'gamma': 0.01,
+   'ngrams': 4,
+   'score': 0.5909199703343438,
+   'tol': 0.0001},
+  'fear': {'C': 1.0,
+   'EMBEDDINGS_DIM': 100,
+   'epsilon': 0.001,
+   'gamma': 0.01,
+   'ngrams': 4,
+   'score': 0.6669056665602984,
+   'tol': 0.0001},
+  'joy': {'C': 1.0,
+   'EMBEDDINGS_DIM': 100,
+   'epsilon': 0.001,
+   'gamma': 0.01,
+   'ngrams': 4,
+   'score': 0.6182783505906371,
+   'tol': 1e-05},
+  'sadness': {'C': 1.0,
+   'EMBEDDINGS_DIM': 100,
+   'epsilon': 0.001,
+   'gamma': 0.001,
+   'ngrams': 4,
+   'score': 0.6839620329687072,
+   'tol': 1e-05}}}
 
 
-# fear.svr	0.30	0.60	0.55
-# fear.lstm	0.33	0.62	0.58
-# fear.avg	0.40	0.64	0.59
-# 
-# sadness.svr	    0.24	0.52	0.54
-# sadness.lstm	0.19	0.52	0.57
-# sadness.avg	    0.30	0.55	0.58
+# In[124]:
 
-# In[140]:
+# ESTIMATOR = 'LinearSVR'
+ESTIMATOR = 'SVR'
 
-get_ipython().magic('pylab inline')
-import numpy as np
-import matplotlib.pyplot as plt
-import natsort
 
-dimension = EMOTION
+if ESTIMATOR == 'SVR':
+    svrTrained = SVR(C=train_params[ESTIMATOR][emoNames[EMOTION]]['C'], 
+                 tol=train_params[ESTIMATOR][emoNames[EMOTION]]['tol'], 
+                 gamma=train_params[ESTIMATOR][emoNames[EMOTION]]['gamma'], 
+                 epsilon=train_params[ESTIMATOR][emoNames[EMOTION]]['epsilon'])
+    
+else:
+    svrTrained = LinearSVR(C=train_params[ESTIMATOR][emoNames[EMOTION]]['C'], 
+                 tol=train_params[ESTIMATOR][emoNames[EMOTION]]['tol'], 
+                 epsilon=train_params[ESTIMATOR][emoNames[EMOTION]]['epsilon'])
+    
+svrTrained.fit(svr_X, svr_y)
+print(svrTrained)
 
-s = y_dev#[:, dimension] #y_annotated[dimension]
-order = sorted(range(len(s)), key=lambda k: s[k])
-
-g1 = y_dev#[:, dimension]
-g2 = mix_y_dev_predict#[yy[dimension] for yy in y_wassa_test_predict]#[:, dimension]    
-
-line_0, = plt.plot(np.array(g1)[order], 'm.',  label='Actual')
-line_1, = plt.plot(np.array(g2)[order], 'b.', label='Prediction')
-plt.grid(True)
-plt.legend(handles=[line_0, line_1])
-plt.legend(bbox_to_anchor=(1.02, .4, .65, .0), loc=3,ncol=1, mode="expand", borderaxespad=1.0)
-plt.ylabel('dimension: '+emoNames[dimension])
-plt.xlabel('tweets')
-plt.title("Model bulit on WASSA corpus")
-plt.show()
+       
+def saveModelFor(model, ESTIMATOR, EMOTION=0, path='/home/vlaand/IpythonNotebooks/wassa2017/'):
+    path = os.path.join(path,ESTIMATOR)
+    checkFolder(path)
+    filename = os.path.join(path,emoNames[EMOTION]+'.dump')
+    checkFolder(filename)
+    _ = joblib.dump(model, filename, compress=9)
+    print("'%s' model saved to <%s>" % (emoNames[EMOTION],filename))
+    
+saveModelFor(svrTrained, ESTIMATOR=ESTIMATOR, EMOTION=EMOTION, path = '/home/vlaand/IpythonNotebooks/wassa2017/classifiers/')
+saveModelFor(svrTrained, ESTIMATOR=ESTIMATOR, EMOTION=EMOTION, path = '/home/vlaand/IpythonNotebooks/05_emotion_wassa_nuig/wassaRegression/classifiers/')
 
 
 # ### Preparing for LSTM
 
-# In[42]:
+# In[199]:
 
-X_train, y_train, embedding_matrix = lists_to_vectors(train_tweets, train_labels)
-X_dev, y_dev, embedding_matrix = lists_to_vectors(dev_tweets, dev_labels)
+# X_train, y_train, embedding_matrix = lists_to_vectors(train_tweets, train_labels)
+# X_dev, y_dev, embedding_matrix = lists_to_vectors(dev_tweets, dev_labels)
 X_test, y_test, embedding_matrix = lists_to_vectors(test_tweets, test_labels)
 
-X, y, embedding_matrix = lists_to_vectors(train_tweets+dev_tweets+test_tweets, train_labels+dev_labels+test_labels)
+# X, y, embedding_matrix = lists_to_vectors(train_tweets+dev_tweets+test_tweets, train_labels+dev_labels+test_labels)
+X, y, embedding_matrix = lists_to_vectors(train_tweets+dev_tweets, train_labels+dev_labels)
 
 
 # ## Training on WASSA dataset
 
-# In[43]:
+# In[200]:
 
 from keras.models import Sequential
 from keras.layers import Dense
@@ -875,25 +891,25 @@ for func in range(3):
 
 # ## Final Training
 
-# In[44]:
+# In[50]:
 
 try:
-    train_params.update({
-        'anger':{'nb_epoch':12},
-        'joy':{'nb_epoch':8},
-        'fear':{'nb_epoch':36},
-        'sadness':{'nb_epoch':18 }
-    })
+    train_params.update(
+        {'LSTM':{
+            'anger':{'nb_epoch':12},
+            'joy':{'nb_epoch':8},
+            'fear':{'nb_epoch':36},
+            'sadness':{'nb_epoch':18 }}}
+    )
 except:
-    train_params = {
-        'anger':{'nb_epoch':12},
-        'joy':{'nb_epoch':8},
-        'fear':{'nb_epoch':36},
-        'sadness':{'nb_epoch':18 }
-    }
+    train_params = {'LSTM':{
+            'anger':{'nb_epoch':12},
+            'joy':{'nb_epoch':8},
+            'fear':{'nb_epoch':36},
+            'sadness':{'nb_epoch':18 }}}
 
 
-# In[45]:
+# In[201]:
 
 hidden_dims1 = 50
 hidden_dims2 = 25
@@ -908,10 +924,10 @@ model.add(Dense(hidden_dims2, b_regularizer=l2(0.01)), )
 model.add(Dense(hidden_dims3, activation='softsign'))
 model.compile(loss='mean_absolute_error', optimizer='adam', metrics=[matthews_correlation])
 
-model.fit(X, y, batch_size=batch_size, nb_epoch=train_params[emoNames[EMOTION]]['nb_epoch'],validation_split=None,)
+model.fit(X, y, batch_size=batch_size, nb_epoch=train_params['LSTM'][emoNames[EMOTION]]['nb_epoch'],validation_split=None,)
 
 
-# In[47]:
+# In[202]:
 
 # y_t_pred = model.predict(X_dev)
 
@@ -923,6 +939,98 @@ print("%8s\t%.2f\t%.2f\t%.2f" % (emoNames[EMOTION],
                                  spearmanr(y_dev , y_dev_pred)[0]))
 
 
+y_test_pred = np.array([y_[0] for y_ in model.predict(X_test)])
+print(min(y_test_pred), max(y_test_pred))
+print("%8s\t%.2f\t%.2f\t%.2f" % (emoNames[EMOTION],
+                                 r2_score(y_test , y_test_pred),                                 
+                                 pearsonr(y_test , y_test_pred)[0],
+                                 spearmanr(y_test , y_test_pred)[0]))
+
+
+# In[203]:
+
+len(svr_y_test_predict), len(y_test_predict), len(mix_y_test_predict)
+
+
+# In[204]:
+
+svr_y_test_predict = svcTrained.predict(svr_X_test)
+y_test_predict = np.array([y_[0] for y_ in model.predict(X_test)])
+mix_y_test_predict = np.array([ np.mean([y1,y2]) for y1,y2 in zip(y_test_predict, svr_y_test_predict) ])
+
+print("%8s\t%.2f\t%.2f\t%.2f" % (emoNames[EMOTION]+'.svr',
+                                 r2_score(svr_y_test , svr_y_test_predict),                                 
+                                 pearsonr(svr_y_test , svr_y_test_predict)[0],
+                                 spearmanr(svr_y_test , svr_y_test_predict)[0]))
+print("%8s\t%.2f\t%.2f\t%.2f" % (emoNames[EMOTION]+'.lstm',
+                                 r2_score(y_test , y_test_predict),                                 
+                                 pearsonr(y_test , y_test_predict)[0],
+                                 spearmanr(y_test , y_test_predict)[0]))
+print("%8s\t%.2f\t%.2f\t%.2f" % (emoNames[EMOTION]+'.avg',
+                                 r2_score(y_test , mix_y_test_predict),                                 
+                                 pearsonr(y_test , mix_y_test_predict)[0],
+                                 spearmanr(y_test , mix_y_test_predict)[0]))
+
+
+# In[206]:
+
+get_ipython().magic('pylab inline')
+import numpy as np
+import matplotlib.pyplot as plt
+import natsort
+
+dimension = EMOTION
+
+s = y_test#[:, dimension] #y_annotated[dimension]
+order = sorted(range(len(s)), key=lambda k: s[k])
+
+g1 = y_test#[:, dimension]
+g2 = mix_y_test_predict#[yy[dimension] for yy in y_wassa_test_predict]#[:, dimension]    
+
+line_0, = plt.plot(np.array(g1)[order], 'm.',  label='Actual')
+line_1, = plt.plot(np.array(g2)[order], 'b.', label='Prediction')
+plt.grid(True)
+plt.legend(handles=[line_0, line_1])
+plt.legend(bbox_to_anchor=(1.02, .4, .65, .0), loc=3,ncol=1, mode="expand", borderaxespad=1.0)
+plt.ylabel('dimension: '+emoNames[dimension])
+plt.xlabel('tweets')
+plt.title("Model bulit on WASSA corpus")
+plt.show()
+
+                     r2   pearson  spearman
+anger.svr	        0.34	0.60	0.57
+anger.lstm	        0.36	0.63	0.61
+anger.avg	        0.42	0.66	0.63
+
+fear.svr	        0.44	0.67	0.63
+fear.lstm	        0.45	0.68	0.66
+fear.avg	        0.49	0.71	0.68
+
+joy.svr	            0.36	0.62	0.63
+joy.lstm	        0.35	0.59	0.59
+joy.avg	            0.41	0.65	0.65
+ 
+sadness.svr	        0.43	0.68	0.69
+sadness.lstm        0.45	0.70	0.69
+sadness.avg	        0.49	0.73	0.72
+
+
+# hashtags remained
+anger.svr	        0.34	0.59	0.56
+anger.lstm	        0.28	0.53	0.51
+anger.avg	        0.36	0.62	0.59
+
+fear.svr	        0.43	0.67	0.63
+fear.lstm	        0.30	0.57	0.53
+fear.avg	        0.44	0.66	0.63
+
+joy.svr	            0.36	0.62	0.63
+joy.lstm	        0.32	0.58	0.59
+joy.avg	            0.40	0.64	0.64
+
+sadness.svr	        0.42	0.68	0.69
+sadness.lstm	    0.32	0.59	0.57
+sadness.avg	        0.44	0.67	0.66
 # In[20]:
 
 from sklearn.metrics import r2_score, f1_score, classification_report
@@ -948,13 +1056,13 @@ from scipy.stats import pearsonr, spearmanr
 
 # In[73]:
 
-print('[%8s]\tR2\tpearson\tspearman' % emoNames[EMOTION])
-for i,y__ in enumerate(y_dev_predicts):  
-        y_test_predict = y__
-        print("%8s\t%.2f\t%.2f\t%.2f" % (i,
-                                 r2_score(y_dev , y_test_predict),                                 
-                                 pearsonr(y_dev , y_test_predict)[0],
-                                 spearmanr(y_dev , y_test_predict)[0]))
+# print('[%8s]\tR2\tpearson\tspearman' % emoNames[EMOTION])
+# for i,y__ in enumerate(y_dev_predicts):  
+#         y_test_predict = y__
+#         print("%8s\t%.2f\t%.2f\t%.2f" % (i,
+#                                  r2_score(y_dev , y_test_predict),                                 
+#                                  pearsonr(y_dev , y_test_predict)[0],
+#                                  spearmanr(y_dev , y_test_predict)[0]))
 
 
 # In[48]:
