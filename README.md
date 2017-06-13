@@ -15,5 +15,5 @@ All requirements are specified in the .senpy file and, alternatively, in a requi
 
 Run with:
 
-    git clone https://github.com/gsi-upm/senpy-plugins-community.git
-    senpy -f senpy-plugins-community
+    git clone https://github.com/MixedEmotions/05_emotion_wassa_nuig
+    senpy -f wassaRegression
