@@ -17,3 +17,5 @@ Run with:
 
     git clone https://github.com/MixedEmotions/05_emotion_wassa_nuig
     senpy -f wassaRegression
+
+This will launch the service on http port 5000. You can run `senpy -h` to see other options, including the http port number.
