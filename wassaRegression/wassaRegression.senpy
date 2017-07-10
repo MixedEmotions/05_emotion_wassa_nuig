@@ -10,7 +10,7 @@
         "estimator": {
             "aliases": ["estimator", "e"],
             "required": true,
-            "options": ["LSTM", "LinearSVR", "SVR", "averaged"],
+            "options": ["LSTM", "SVR", "averaged"],
             "default": "LSTM"
         }
      },

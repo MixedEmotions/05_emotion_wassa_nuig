@@ -66,36 +66,32 @@ class wassaRegression(EmotionPlugin):
         
         np.random.seed(1337)
         
-        st = datetime.now()
-        self._wordFrequencies = self._load_unique_tokens(filename = self._paths_word_freq)
-        logger.info("{} {}".format(datetime.now() - st, "loaded _wordFrequencies"))
+#         st = datetime.now()
+#         self._wordFrequencies = self._load_unique_tokens(filename = self._paths_word_freq)
+#         logger.info("{} {}".format(datetime.now() - st, "loaded _wordFrequencies"))
         
         self._wassaRegressionDLModels = {emo:self._load_model_emo_and_weights(self._savedModelPath, emo) for emo in self._emoNames}  
+                                   
+        st = datetime.now()
+        self._stop_words = get_stop_words('en')
+        logger.info("{} {}".format(datetime.now() - st, "loaded _stop_words"))
+
+        st = datetime.now()
+        self._ngramizer = joblib.load(self._paths_ngramizer)
+        logger.info("{} {}".format(datetime.now() - st, "loaded _ngramizers"))
+
+        self._wassaRegressionSVMmodels = {
+            #'LinearSVR': self._load_classifier(PATH=self._paths_linearsvr, ESTIMATOR='LinearSVR' ),
+            'SVR': self._load_classifier(PATH=self._paths_svr, ESTIMATOR='SVR')
+            }
         
         st = datetime.now()
         self._Dictionary, self._Indices = self._load_original_vectors(
             filename = self._path_wordembeddings, 
             sep = ' ',
-            wordFrequencies = self._wordFrequencies, 
+            wordFrequencies = None,#self._wordFrequencies, 
             zipped = True) # leave wordFrequencies=None for loading the entire WE file
         logger.info("{} {}".format(datetime.now() - st, "loaded _wordEmbeddings"))
-        
-#         load_svr = False
-        load_svr = True
-        if load_svr:
-            
-            st = datetime.now()
-            self._stop_words = get_stop_words('en')
-            logger.info("{} {}".format(datetime.now() - st, "loaded _stop_words"))
-            
-            st = datetime.now()
-            self._ngramizer = joblib.load(self._paths_ngramizer)
-            logger.info("{} {}".format(datetime.now() - st, "loaded _ngramizers"))
-            
-            self._wassaRegressionSVMmodels = {
-                'LinearSVR': self._load_classifier(PATH=self._paths_linearsvr, ESTIMATOR='LinearSVR' ),
-                'SVR': self._load_classifier(PATH=self._paths_svr, ESTIMATOR='SVR')
-                }
 
         logger.info("wassaRegression plugin is ready to go!")
         
@@ -137,8 +133,8 @@ class wassaRegression(EmotionPlugin):
 
                 token = line_d[0]
                 token_vector = np.array(line_d[1:], dtype = 'float32')   
-                if(wordFrequencies):
-                    if(token in wordFrequencies):                
+                if wordFrequencies != None:
+                    if token in wordFrequencies:                
                         Dictionary[token] = token_vector
                         Indices.update({token:i})
                         i+=1
@@ -263,12 +259,8 @@ class wassaRegression(EmotionPlugin):
         return feature_set 
     
     def _extract_features_svr(self, X):  
-        if self.ESTIMATOR in ['SVR','LinearSVR']:
-            feature_set = {
-                emo: float(clf.predict(X)[0]) for emo,clf in zip(self._emoNames, self._wassaRegressionSVMmodels[self.ESTIMATOR])}
-        else:
-            feature_set = {
-                emo: float(clf.predict(X)[0]) for emo,clf in zip(self._emoNames, self._wassaRegressionSVMmodels['LinearSVR'])}
+        feature_set = {
+            emo: float(clf.predict(X)[0]) for emo,clf in zip(self._emoNames, self._wassaRegressionSVMmodels['SVR'])}
         return feature_set 
     
     
