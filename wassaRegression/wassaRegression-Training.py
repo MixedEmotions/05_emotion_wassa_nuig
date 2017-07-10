@@ -929,7 +929,7 @@ model.compile(loss='mean_absolute_error', optimizer='adam', metrics=[matthews_co
 model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=train_params['LSTM'][emoNames[EMOTION]]['nb_epoch'],validation_split=None,)
 
 
-# In[32]:
+# In[43]:
 
 from IPython.display import SVG
 # from keras.utils.vis_utils import model_to_dot
@@ -957,7 +957,7 @@ def _load_model_emo_and_weights(filename, emo):
 
 
 
-# In[33]:
+# In[35]:
 
 # y_t_pred = model.predict(X_dev)
 
@@ -977,9 +977,9 @@ print("%8s\t%.2f\t%.2f\t%.2f" % (emoNames[EMOTION],
                                  spearmanr(y_test , y_test_pred)[0]))
 
 
-# In[379]:
+# In[42]:
 
-len(svr_y_test_predict), len(y_test_predict), len(mix_y_test_predict)
+# len(svr_y_test_predict)#, len(y_test_predict), len(mix_y_test_predict)
 
 
 # In[380]:
